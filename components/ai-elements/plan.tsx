@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 import { ChevronsUpDownIcon } from "lucide-react";
 import type { ComponentProps } from "react";
 import { createContext, useContext } from "react";
-import { Shimmer } from "./shimmer";
+// Shimmer removed due to TypeScript compatibility issues
 
 type PlanContextValue = {
   isStreaming: boolean;
@@ -74,7 +74,7 @@ export const PlanTitle = ({ children, ...props }: PlanTitleProps) => {
 
   return (
     <CardTitle data-slot="plan-title" {...props}>
-      {isStreaming ? <Shimmer>{children}</Shimmer> : children}
+      {isStreaming ? <span className="animate-pulse opacity-70">{children}</span> : children}
     </CardTitle>
   );
 };
@@ -99,7 +99,7 @@ export const PlanDescription = ({
       data-slot="plan-description"
       {...props}
     >
-      {isStreaming ? <Shimmer>{children}</Shimmer> : children}
+      {isStreaming ? <span className="animate-pulse opacity-70">{children}</span> : children}
     </CardDescription>
   );
 };
