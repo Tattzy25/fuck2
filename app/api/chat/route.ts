@@ -1,25 +1,45 @@
 import { streamText, UIMessage, convertToModelMessages } from 'ai';
+import { z } from 'zod';
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 export async function POST(req: Request) {
-  const {
-    messages,
-    model,
-    webSearch,
-  }: { 
-    messages: UIMessage[]; 
-    model: string; 
-    webSearch: boolean;
-  } = await req.json();
+  const { messages }: { messages: UIMessage[] } = await req.json();
   const result = streamText({
-    model: webSearch ? 'perplexity/sonar' : model,
+    model: 'openai/gpt-4o',
     messages: convertToModelMessages(messages),
-    system:
-      'You are a helpful assistant that can answer questions and help with tasks',
+    tools: {
+      fetch_weather_data: {
+        description: 'Fetch weather information for a specific location',
+        parameters: z.object({
+          location: z
+            .string()
+            .describe('The city or location to get weather for'),
+          units: z
+            .enum(['celsius', 'fahrenheit'])
+            .default('celsius')
+            .describe('Temperature units'),
+        }),
+        inputSchema: z.object({
+          location: z.string(),
+          units: z.enum(['celsius', 'fahrenheit']).default('celsius'),
+        }),
+        execute: async ({ location, units }) => {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          const temp =
+            units === 'celsius'
+              ? Math.floor(Math.random() * 35) + 5
+              : Math.floor(Math.random() * 63) + 41;
+          return {
+            location,
+            temperature: `${temp}°${units === 'celsius' ? 'C' : 'F'}`,
+            conditions: 'Sunny',
+            humidity: `12%`,
+            windSpeed: `35 ${units === 'celsius' ? 'km/h' : 'mph'}`,
+            lastUpdated: new Date().toLocaleString(),
+          };
+        },
+      },
+    },
   });
-  // send sources and reasoning back to the client
-  return result.toUIMessageStreamResponse({
-    sendSources: true,
-    sendReasoning: true,
-  });
+  return result.toUIMessageStreamResponse();
 }
