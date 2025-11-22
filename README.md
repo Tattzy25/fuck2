@@ -108,8 +108,24 @@ fuck/
 
 ## Configuration
 
+### Environment Variables
+
+Create a `.env.local` file in the root directory with your API keys:
+
+```bash
+# OpenAI API Key (required for chat, search, and tasks endpoints)
+OPENAI_API_KEY=your_openai_api_key_here
+
+# DeepSeek API Key (required for reasoning endpoint when using DeepSeek models)
+DEEPSEEK_API_KEY=your_deepseek_api_key_here
+```
+
+See `.env.example` for a template.
+
+### Other Settings
+
 - **maxDuration**: API routes are configured for up to 30 seconds of streaming
-- **Font**: Uses Geist font family for modern typography
+- **Font**: Uses system fonts for optimal performance
 - **ESLint**: Configured for code linting
 
 ## Development
@@ -128,11 +144,22 @@ npm start
 
 ## Deployment
 
-Deploy easily to Vercel or any platform supporting Next.js:
+### Vercel Deployment
 
-1. Push to your repository
-2. Connect to Vercel
-3. Deploy automatically
+1. Push your code to GitHub
+2. Go to [Vercel](https://vercel.com) and import your repository
+3. Add environment variables in Vercel dashboard:
+   - Go to Project Settings → Environment Variables
+   - Add `OPENAI_API_KEY` with your OpenAI API key
+   - Add `DEEPSEEK_API_KEY` with your DeepSeek API key (if using DeepSeek models)
+4. Deploy automatically
+
+### Other Platforms
+
+This app can be deployed to any platform supporting Next.js 13+ with:
+- Node.js 18+
+- Environment variables support
+- Streaming responses support
 
 ## Contributing
 
