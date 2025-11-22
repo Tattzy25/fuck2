@@ -35,6 +35,7 @@ import {
 } from '@/components/ai-elements/prompt-input';
 import { useState } from 'react';
 import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport } from 'ai';
 import { CopyIcon, GlobeIcon, RefreshCcwIcon } from 'lucide-react';
 import {
   Source,
@@ -63,7 +64,9 @@ const ChatBotDemo = () => {
   const [model, setModel] = useState<string>(models[0].value);
   const [webSearch, setWebSearch] = useState(false);
   const { messages, sendMessage, status, regenerate } = useChat({
-    api: '/api/reasoning',
+    transport: new DefaultChatTransport({
+      api: '/api/reasoning',
+    }),
   });
   const handleSubmit = (message: PromptInputMessage) => {
     const hasText = Boolean(message.text);
