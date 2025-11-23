@@ -1,86 +1,132 @@
-'use client';
+"use client";
+
 import {
-  Reasoning,
-  ReasoningContent,
-  ReasoningTrigger,
-} from '@/components/ai-elements/reasoning';
-import {
-  Conversation,
-  ConversationContent,
-  ConversationScrollButton,
-} from '@/components/ai-elements/conversation';
-import {
-  PromptInput,
-  PromptInputTextarea,
-  PromptInputSubmit,
-} from '@/components/ai-elements/prompt-input';
-import { Loader } from '@/components/ai-elements/loader';
-import { Message, MessageContent, MessageResponse } from '@/components/ai-elements/message';
-import { useState } from 'react';
-import { useChat } from '@ai-sdk/react';
-const ReasoningDemo = () => {
-  const [input, setInput] = useState('');
-  const { messages, sendMessage, status } = useChat();
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    sendMessage({ text: input });
-    setInput('');
-  };
-  return (
-    <div className="max-w-4xl mx-auto p-6 relative size-full rounded-lg border h-[600px]">
-      <div className="flex flex-col h-full">
-        <Conversation>
-          <ConversationContent>
-            {messages.map((message) => (
-              <Message from={message.role} key={message.id}>
-                <MessageContent>
-                  {message.parts.map((part, i) => {
-                    switch (part.type) {
-                      case 'text':
-                        return (
-                          <MessageResponse key={`${message.id}-${i}`}>
-                            {part.text}
-                          </MessageResponse>
-                        );
-                      case 'reasoning':
-                        return (
-                          <Reasoning
-                            key={`${message.id}-${i}`}
-                            className="w-full"
-                            isStreaming={status === 'streaming' && i === message.parts.length - 1 && message.id === messages.at(-1)?.id}
-                          >
-                            <ReasoningTrigger />
-                            <ReasoningContent>{part.text}</ReasoningContent>
-                          </Reasoning>
-                        );
-                    }
-                  })}
-                </MessageContent>
-              </Message>
-            ))}
-            {status === 'submitted' && <Loader />}
-          </ConversationContent>
-          <ConversationScrollButton />
-        </Conversation>
-        <PromptInput
-          onSubmit={handleSubmit}
-          className="mt-4 w-full max-w-2xl mx-auto relative"
-        >
-          <PromptInputTextarea
-            value={input}
-            placeholder="Say something..."
-            onChange={(e) => setInput(e.currentTarget.value)}
-            className="pr-12"
-          />
-          <PromptInputSubmit
-            status={status === 'streaming' ? 'streaming' : 'ready'}
-            disabled={!input.trim()}
-            className="absolute bottom-1 right-1"
-          />
-        </PromptInput>
-      </div>
-    </div>
-  );
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
+import { BrainIcon, ChevronDownIcon, LoaderIcon } from "lucide-react";
+import type { ComponentProps, HTMLAttributes } from "react";
+import { createContext, memo, useContext, useState } from "react";
+import { Streamdown } from "streamdown";
+
+type ReasoningContextValue = {
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+  isStreaming?: boolean;
 };
 
-export default ReasoningDemo;
+const ReasoningContext = createContext<ReasoningContextValue | null>(null);
+
+const useReasoning = () => {
+  const context = useContext(ReasoningContext);
+
+  if (!context) {
+    throw new Error("Reasoning components must be used within Reasoning");
+  }
+
+  return context;
+};
+
+export type ReasoningProps = HTMLAttributes<HTMLDivElement> & {
+  isStreaming?: boolean;
+  defaultOpen?: boolean;
+};
+
+export const Reasoning = memo(
+  ({
+    className,
+    isStreaming = false,
+    defaultOpen = false,
+    children,
+    ...props
+  }: ReasoningProps) => {
+    const [isOpen, setIsOpen] = useState(defaultOpen);
+
+    return (
+      <ReasoningContext.Provider value={{ isOpen, setIsOpen, isStreaming }}>
+        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+          <div
+            className={cn(
+              "not-prose w-full rounded-lg border bg-muted/30 p-3",
+              className
+            )}
+            {...props}
+          >
+            {children}
+          </div>
+        </Collapsible>
+      </ReasoningContext.Provider>
+    );
+  }
+);
+
+Reasoning.displayName = "Reasoning";
+
+export type ReasoningTriggerProps = ComponentProps<
+  typeof CollapsibleTrigger
+>;
+
+export const ReasoningTrigger = memo(
+  ({ className, children, ...props }: ReasoningTriggerProps) => {
+    const { isOpen, isStreaming } = useReasoning();
+
+    return (
+      <CollapsibleTrigger
+        className={cn(
+          "flex w-full items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground",
+          className
+        )}
+        {...props}
+      >
+        <BrainIcon className="size-4 shrink-0" />
+        <span className="flex-1 text-left">
+          {children ?? (
+            <span className="flex items-center gap-2">
+              Reasoning
+              {isStreaming && (
+                <LoaderIcon className="size-3 animate-spin" />
+              )}
+            </span>
+          )}
+        </span>
+        <ChevronDownIcon
+          className={cn(
+            "size-4 shrink-0 transition-transform",
+            isOpen ? "rotate-180" : "rotate-0"
+          )}
+        />
+      </CollapsibleTrigger>
+    );
+  }
+);
+
+ReasoningTrigger.displayName = "ReasoningTrigger";
+
+export type ReasoningContentProps = ComponentProps<
+  typeof CollapsibleContent
+> & {
+  children?: React.ReactNode;
+};
+
+export const ReasoningContent = memo(
+  ({ className, children, ...props }: ReasoningContentProps) => {
+    return (
+      <CollapsibleContent
+        className={cn("mt-3 space-y-2", className)}
+        {...props}
+      >
+        <div className="text-sm text-muted-foreground prose prose-sm max-w-none dark:prose-invert">
+          {typeof children === "string" ? (
+            <Streamdown>{children}</Streamdown>
+          ) : (
+            children
+          )}
+        </div>
+      </CollapsibleContent>
+    );
+  }
+);
+
+ReasoningContent.displayName = "ReasoningContent";

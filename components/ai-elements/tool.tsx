@@ -36,8 +36,11 @@ export type ToolHeaderProps = {
   className?: string;
 };
 
+// Extended tool states beyond the base ToolUIPart state type
+type ExtendedToolState = ToolUIPart["state"] | "approval-requested" | "approval-responded" | "output-denied";
+
 const getStatusBadge = (status: ToolUIPart["state"]) => {
-  const labels: Record<ToolUIPart["state"], string> = {
+  const labels: Record<ExtendedToolState, string> = {
     "input-streaming": "Pending",
     "input-available": "Running",
     "approval-requested": "Awaiting Approval",
@@ -47,7 +50,7 @@ const getStatusBadge = (status: ToolUIPart["state"]) => {
     "output-denied": "Denied",
   };
 
-  const icons: Record<ToolUIPart["state"], ReactNode> = {
+  const icons: Record<ExtendedToolState, ReactNode> = {
     "input-streaming": <CircleIcon className="size-4" />,
     "input-available": <ClockIcon className="size-4 animate-pulse" />,
     "approval-requested": <ClockIcon className="size-4 text-yellow-600" />,

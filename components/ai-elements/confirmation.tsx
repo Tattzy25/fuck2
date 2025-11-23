@@ -1,99 +1,189 @@
-'use client';
-import { useChat } from '@ai-sdk/react';
-import { DefaultChatTransport, type ToolUIPart } from 'ai';
-import { CheckIcon, XIcon } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  Confirmation,
-  ConfirmationContent,
-  ConfirmationRequest,
-  ConfirmationAccepted,
-  ConfirmationRejected,
-  ConfirmationActions,
-  ConfirmationAction,
-} from '@/components/ai-elements/confirmation';
-import { MessageResponse } from '@/components/ai-elements/message';
-type DeleteFileInput = {
-  filePath: string;
-  confirm: boolean;
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { CheckIcon, XIcon } from "lucide-react";
+import type { ComponentProps, HTMLAttributes } from "react";
+import { createContext, useContext } from "react";
+
+type ConfirmationApproval = {
+  onApprove: () => void;
+  onReject: () => void;
 };
-type DeleteFileToolUIPart = ToolUIPart<{
-  delete_file: {
-    input: DeleteFileInput;
-    output: { success: boolean; message: string };
-  };
-}>;
-const Example = () => {
-  const { messages, sendMessage, status, respondToConfirmationRequest } = useChat({
-    transport: new DefaultChatTransport({
-      api: '/api/chat',
-    }),
-  });
-  const handleDeleteFile = () => {
-    sendMessage({ text: 'Delete the file at /tmp/example.txt' });
-  };
-  const latestMessage = messages[messages.length - 1];
-  const deleteTool = latestMessage?.parts?.find(
-    (part) => part.type === 'tool-delete_file'
-  ) as DeleteFileToolUIPart | undefined;
+
+type ConfirmationState = "pending" | "approved" | "rejected";
+
+type ConfirmationContextValue = {
+  approval?: ConfirmationApproval;
+  state?: ConfirmationState;
+};
+
+const ConfirmationContext = createContext<ConfirmationContextValue | null>(null);
+
+const useConfirmation = () => {
+  const context = useContext(ConfirmationContext);
+
+  if (!context) {
+    throw new Error("Confirmation components must be used within Confirmation");
+  }
+
+  return context;
+};
+
+export type ConfirmationProps = HTMLAttributes<HTMLDivElement> & {
+  approval?: ConfirmationApproval;
+  state?: ConfirmationState;
+};
+
+export const Confirmation = ({
+  className,
+  approval,
+  state = "pending",
+  children,
+  ...props
+}: ConfirmationProps) => {
   return (
-    <div className="max-w-4xl mx-auto p-6 relative size-full rounded-lg border h-[600px]">
-      <div className="flex flex-col h-full space-y-4">
-        <Button onClick={handleDeleteFile} disabled={status !== 'ready'}>
-          Delete Example File
-        </Button>
-        {deleteTool?.approval && (
-          <Confirmation approval={deleteTool.approval} state={deleteTool.state}>
-            <ConfirmationContent>
-              <ConfirmationRequest>
-                This tool wants to delete: <code>{deleteTool.input?.filePath}</code>
-                <br />
-                Do you approve this action?
-              </ConfirmationRequest>
-              <ConfirmationAccepted>
-                <CheckIcon className="size-4" />
-                <span>You approved this tool execution</span>
-              </ConfirmationAccepted>
-              <ConfirmationRejected>
-                <XIcon className="size-4" />
-                <span>You rejected this tool execution</span>
-              </ConfirmationRejected>
-            </ConfirmationContent>
-            <ConfirmationActions>
-              <ConfirmationAction
-                variant="outline"
-                onClick={() =>
-                  respondToConfirmationRequest({
-                    approvalId: deleteTool.approval!.id,
-                    approved: false,
-                  })
-                }
-              >
-                Reject
-              </ConfirmationAction>
-              <ConfirmationAction
-                variant="default"
-                onClick={() =>
-                  respondToConfirmationRequest({
-                    approvalId: deleteTool.approval!.id,
-                    approved: true,
-                  })
-                }
-              >
-                Approve
-              </ConfirmationAction>
-            </ConfirmationActions>
-          </Confirmation>
+    <ConfirmationContext.Provider value={{ approval, state }}>
+      <div
+        className={cn(
+          "rounded-lg border bg-card p-4 space-y-3",
+          className
         )}
-        {deleteTool?.output && (
-          <MessageResponse>
-            {deleteTool.output.success
-              ? deleteTool.output.message
-              : `Error: ${deleteTool.output.message}`}
-          </MessageResponse>
-        )}
+        {...props}
+      >
+        {children}
       </div>
+    </ConfirmationContext.Provider>
+  );
+};
+
+export type ConfirmationContentProps = HTMLAttributes<HTMLDivElement>;
+
+export const ConfirmationContent = ({
+  className,
+  children,
+  ...props
+}: ConfirmationContentProps) => (
+  <div className={cn("text-sm", className)} {...props}>
+    {children}
+  </div>
+);
+
+export type ConfirmationRequestProps = HTMLAttributes<HTMLDivElement>;
+
+export const ConfirmationRequest = ({
+  className,
+  children,
+  ...props
+}: ConfirmationRequestProps) => {
+  const { state } = useConfirmation();
+
+  if (state !== "pending") {
+    return null;
+  }
+
+  return (
+    <div
+      className={cn("text-muted-foreground", className)}
+      {...props}
+    >
+      {children}
     </div>
   );
 };
-export default Example;
+
+export type ConfirmationAcceptedProps = HTMLAttributes<HTMLDivElement>;
+
+export const ConfirmationAccepted = ({
+  className,
+  children,
+  ...props
+}: ConfirmationAcceptedProps) => {
+  const { state } = useConfirmation();
+
+  if (state !== "approved") {
+    return null;
+  }
+
+  return (
+    <div
+      className={cn("flex items-center gap-2 text-green-600", className)}
+      {...props}
+    >
+      <CheckIcon className="size-4" />
+      <span>{children || "Approved"}</span>
+    </div>
+  );
+};
+
+export type ConfirmationRejectedProps = HTMLAttributes<HTMLDivElement>;
+
+export const ConfirmationRejected = ({
+  className,
+  children,
+  ...props
+}: ConfirmationRejectedProps) => {
+  const { state } = useConfirmation();
+
+  if (state !== "rejected") {
+    return null;
+  }
+
+  return (
+    <div
+      className={cn("flex items-center gap-2 text-red-600", className)}
+      {...props}
+    >
+      <XIcon className="size-4" />
+      <span>{children || "Rejected"}</span>
+    </div>
+  );
+};
+
+export type ConfirmationActionsProps = HTMLAttributes<HTMLDivElement>;
+
+export const ConfirmationActions = ({
+  className,
+  children,
+  ...props
+}: ConfirmationActionsProps) => {
+  const { state } = useConfirmation();
+
+  if (state !== "pending") {
+    return null;
+  }
+
+  return (
+    <div className={cn("flex items-center gap-2", className)} {...props}>
+      {children}
+    </div>
+  );
+};
+
+export type ConfirmationActionProps = ComponentProps<typeof Button> & {
+  action?: "approve" | "reject";
+};
+
+export const ConfirmationAction = ({
+  action,
+  onClick,
+  children,
+  ...props
+}: ConfirmationActionProps) => {
+  const { approval } = useConfirmation();
+
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (action === "approve") {
+      approval?.onApprove();
+    } else if (action === "reject") {
+      approval?.onReject();
+    }
+    onClick?.(e);
+  };
+
+  return (
+    <Button onClick={handleClick} size="sm" {...props}>
+      {children}
+    </Button>
+  );
+};
